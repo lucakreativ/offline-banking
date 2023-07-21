@@ -4,6 +4,9 @@ from Crypto.Signature import eddsa
 import tkinter as tk
 import bank.bank as bank
 import json as js
+import qrcode
+import cv2
+from qreader import QReader
 
 def create_user_key():
     priv = ECC.generate(curve='ed25519')
@@ -27,17 +30,67 @@ def check_publ_key(signed_key, bank_path, usr_path):
     except ValueError:
         print("The key is not authentic")
 
-def main():
-    user_id = bank.get_user_id()
+def new_transaction():
+    qr = qrcode.QRCode(
+        version=1,
+        error_correction=qrcode.constants.ERROR_CORRECT_L,
+        box_size=2,
+        border=4,
+    )
+    qr.add_data(f"OFFLINEBANK||20|7|Nudeln")
+    qr.make(fit=True)
 
+    img = qr.make_image(fill_color="black", back_color="white")
+    img.save("qr.png")
+
+def scan():
+    qreader = QReader()
+    image = cv2.cvtColor(cv2.imread('qr.png'), cv2.COLOR_BGR2RGB)
+    code = qreader.detect_and_decode(image=image)[0]
+    if code[:13] == "OFFLINEBANK||":
+        val, t_id, prod = code[13:].split('|')
+        choice_win = tk.Tk()
+        tk.font = ("TkDefaultFont", 20)
+        label = tk.Label(choice_win, text=f"Do you accept the following transaction?")
+        label.pack()
+        label = tk.Label(choice_win, text=f"Value: {val}€")
+        label.pack()
+        label = tk.Label(choice_win, text=f"Product: {prod}")
+        label.pack()
+        button = tk.Button(choice_win, text=f"Allow", command=lambda: (accept(), choice_win.destroy()))
+        button.pack()
+        button = tk.Button(choice_win, text=f"Deny", command=lambda: choice_win.destroy())
+        button.pack()
+        choice_win.mainloop()
+
+def accept():
+    with open(data)
+
+def new():
+    data = {}
+
+    data["signed"] = bank.sign_user_key(f"../user/open.pem")
+
+    with open('data.json', 'w') as f:
+        js.dump(data, f)
+
+def main(new=False):
+    if new: new()
+    with open('data.json', 'r') as f:
+        data = js.load(f)
 
     root = tk.Tk()
     root.title("Offline-Banking")
     root.geometry("350x600")
 
-    label = tk.Label(root, text=user_id)
+    label = tk.Label(root, text=f"Aktueller Kontostand: {data['balance']}€")
     label.pack()
+    new_transaction_button = tk.Button(root, text=f"Neue Transaktion", command=new_transaction)
+    new_transaction_button.pack()
+    scan_button = tk.Button(root, text=f"Scan", command=scan)
+    scan_button.pack()
 
     root.mainloop()
+
 
 main()
