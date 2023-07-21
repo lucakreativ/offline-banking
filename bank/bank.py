@@ -25,7 +25,6 @@ def load_user_key(dir):
 
 def sign_user_key(dir):
     priv = load_private_key()
-    publ = load_public_key()
     usr = load_user_key(dir)
     usr_hash = SHA512.new(bytes(usr.export_key(format='PEM'), 'utf-8'))
     signer = eddsa.new(priv, 'rfc8032')
