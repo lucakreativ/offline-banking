@@ -7,7 +7,6 @@ import json as js
 import qrcode
 import cv2
 from qreader import QReader
-import os
 
 def create_user_key():
     priv = ECC.generate(curve='ed25519')
@@ -35,7 +34,7 @@ def new_transaction():
     qr = qrcode.QRCode(
         version=1,
         error_correction=qrcode.constants.ERROR_CORRECT_L,
-        box_size=2,
+        box_size=5,
         border=4,
     )
     qr.add_data(f"OFFLINEBANK||20|7|Nudeln")
@@ -74,7 +73,7 @@ def accept(transaction_hash):
     qr = qrcode.QRCode(
         version=1,
         error_correction=qrcode.constants.ERROR_CORRECT_L,
-        box_size=2,
+        box_size=5,
         border=4,
     )
 
@@ -84,9 +83,7 @@ def accept(transaction_hash):
     qr.make(fit=True)
 
     img = qr.make_image(fill_color="black", back_color="white")
-    img.save("2.png")
-    os.remove("1.png")
-
+    img.save("1.png")
 
 
 def new():
