@@ -27,11 +27,11 @@ def sign_user_key(dir):
     priv = load_private_key()
     publ = load_public_key()
     usr = load_user_key(dir)
-    usr_hash = SHA512.new(usr.export_key())
+    usr_hash = SHA512.new(bytes(usr.export_key(format='PEM'), 'utf-8'))
     signer = eddsa.new(priv, 'rfc8032')
     signed = signer.sign(usr_hash)
-    return signed, publ
+    return signed
 
 
 
-sign_user_key('../user/open.pem')
+print(sign_user_key('../user/open.pem'))
