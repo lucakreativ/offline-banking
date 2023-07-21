@@ -1,6 +1,9 @@
 from Crypto.PublicKey import ECC
 from Crypto.Hash import SHA512
 from Crypto.Signature import eddsa
+import tkinter as tk
+import bank.bank as bank
+import json as js
 
 def create_user_key():
     priv = ECC.generate(curve='ed25519')
@@ -24,4 +27,17 @@ def check_publ_key(signed_key, bank_path, usr_path):
     except ValueError:
         print("The key is not authentic")
 
-check_publ_key(b"mF\x9a\xe3\x1a\xab3/K\xa3\xf1\xe0\xc9y\x9c\x8c!\xddFB\xeb`\x00)\xd9BJ\xb7\x18\xc8o\xa7\x15\x83(\x85\x92^\x84\\\x883k\x10\x18f\xca\xea\xe8\xe6~\x1d\x16\x88\x83'\xcd\xbb!\xcf\xfc\xb4\x15\t", '../bank/bank-open.pem', "open.pem")
+def main():
+    user_id = bank.get_user_id()
+
+
+    root = tk.Tk()
+    root.title("Offline-Banking")
+    root.geometry("350x600")
+
+    label = tk.Label(root, text=user_id)
+    label.pack()
+
+    root.mainloop()
+
+main()
