@@ -7,6 +7,7 @@ import json as js
 import qrcode
 import cv2
 from qreader import QReader
+import os
 
 def create_user_key():
     priv = ECC.generate(curve='ed25519')
@@ -84,6 +85,8 @@ def accept(transaction_hash):
 
     img = qr.make_image(fill_color="black", back_color="white")
     img.save("2.png")
+    os.remove("1.png")
+
 
 
 def new():
