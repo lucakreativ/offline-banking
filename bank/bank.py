@@ -7,12 +7,12 @@ def create_keys():
     with open('bank-private.pem', 'wt') as f:
         f.write(priv.export_key(format='PEM'))
 
-    opn = priv.public_key()
-    with open('bank-open.pem', 'wt') as f:
-        f.write(opn.export_key(format='PEM'))
+    publ = priv.public_key()
+    with open('bank-public.pem', 'wt') as f:
+        f.write(publ.export_key(format='PEM'))
 
 def load_public_key():
-    with open('bank-open.pem', 'r') as f:
+    with open('bank-public.pem', 'r') as f:
         return ECC.import_key(f.read())
 
 def load_private_key():
@@ -31,6 +31,5 @@ def sign_user_key(dir):
     signed = signer.sign(usr_hash)
     return signed
 
-
-
-print(sign_user_key('../user/open.pem'))
+def get_user_id():
+    return 5
