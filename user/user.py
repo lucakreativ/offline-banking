@@ -41,14 +41,15 @@ def new_transaction():
     qr.make(fit=True)
 
     img = qr.make_image(fill_color="black", back_color="white")
-    img.save("qr.png")
+    img.save("1.png")
 
 def scan():
     qreader = QReader()
-    image = cv2.cvtColor(cv2.imread('qr.png'), cv2.COLOR_BGR2RGB)
+    image = cv2.cvtColor(cv2.imread('1.png'), cv2.COLOR_BGR2RGB)
     code = qreader.detect_and_decode(image=image)[0]
     if code[:13] == "OFFLINEBANK||":
         val, t_id, prod = code[13:].split('|')
+        transaction_hash = SHA512.new(bytes(code[13:])).hexdigest()
         choice_win = tk.Tk()
         tk.font = ("TkDefaultFont", 20)
         label = tk.Label(choice_win, text=f"Do you accept the following transaction?")
@@ -57,22 +58,37 @@ def scan():
         label.pack()
         label = tk.Label(choice_win, text=f"Product: {prod}")
         label.pack()
-        button = tk.Button(choice_win, text=f"Allow", command=lambda: (accept(), choice_win.destroy()))
+        button = tk.Button(choice_win, text=f"Allow", command=lambda: (accept(transaction_hash), choice_win.destroy()))
         button.pack()
         button = tk.Button(choice_win, text=f"Deny", command=lambda: choice_win.destroy())
         button.pack()
         choice_win.mainloop()
 
-def accept():
-    with open(data):
-        pass
+def accept(transaction_hash):
+    with open('data.json') as f:
+        data = js.load(f)
+
+    qr = qrcode.QRCode(
+        version=1,
+        error_correction=qrcode.constants.ERROR_CORRECT_L,
+        box_size=2,
+        border=4,
+    )
+
+    path = '../user/open.pem'
+    qr.add_data(f"OFFLINEBANK2||{data['id']}|{path}|{data['signed']}|{transaction_hash}")
+
+    qr.make(fit=True)
+
+    img = qr.make_image(fill_color="black", back_color="white")
+    img.save("2.png")
+
 
 def new():
     data = {}
     data["id"] = bank.get_user_id()
-
+    data["balance"] = 0
     data["signed"] = bank.sign_user_key(f"../user/open.pem", bank.get_user_id())
-
     with open('data.json', 'w') as f:
         js.dump(data, f)
 
