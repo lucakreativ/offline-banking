@@ -16,7 +16,7 @@ def load_public_key():
         return ECC.import_key(f.read())
 
 def load_private_key():
-    with open('bank-private.pem', 'r') as f:
+    with open('../bank/bank-private.pem', 'r') as f:
         return ECC.import_key(f.read())
 
 def load_user_key(dir):
@@ -26,10 +26,10 @@ def load_user_key(dir):
 def sign_user_key(dir):
     priv = load_private_key()
     usr = load_user_key(dir)
-    usr_hash = SHA512.new(bytes(usr.export_key(format='PEM'), 'utf-8'))
+    usr_hash = SHA512.new(usr.export_key(format='raw'))
     signer = eddsa.new(priv, 'rfc8032')
     signed = signer.sign(usr_hash)
-    return signed
+    return signed.hex()
 
 def get_user_id():
     return 5
