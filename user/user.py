@@ -64,7 +64,9 @@ def scan():
         button.pack()
         choice_win.mainloop()
     if code[:14] == "OFFLINEBANK2||":
-        print(code[14:].split('|'))
+        id, usr, signed, transaction_hash = code[14:].split('|')
+        id = int(id)
+        check_publ_key(signed, '../bank/bank-public.pem', usr, id)
 
 def accept(transaction_hash):
     with open('data.json') as f:
