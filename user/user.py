@@ -49,7 +49,7 @@ def scan():
     code = qreader.detect_and_decode(image=image)[0]
     if code[:13] == "OFFLINEBANK||":
         val, t_id, prod = code[13:].split('|')
-        transaction_hash = SHA512.new(bytes(code[13:])).hexdigest()
+        transaction_hash = SHA512.new(bytes(code[13:], 'utf-8')).hexdigest()
         choice_win = tk.Tk()
         tk.font = ("TkDefaultFont", 20)
         label = tk.Label(choice_win, text=f"Do you accept the following transaction?")
@@ -63,6 +63,8 @@ def scan():
         button = tk.Button(choice_win, text=f"Deny", command=lambda: choice_win.destroy())
         button.pack()
         choice_win.mainloop()
+    if code[:14] == "OFFLINEBANK2||":
+        print(code[14:].split('|'))
 
 def accept(transaction_hash):
     with open('data.json') as f:
