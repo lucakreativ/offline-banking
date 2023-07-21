@@ -23,13 +23,13 @@ def load_user_key(dir):
     with open(dir, 'r') as f:
         return ECC.import_key(f.read())
 
-def sign_user_key(dir):
+def sign_user_key(dir, id):
     priv = load_private_key()
     usr = load_user_key(dir)
-    usr_hash = SHA512.new(usr.export_key(format='raw'))
+    usr_hash = SHA512.new(usr.export_key(format='raw') + bytes(id))
     signer = eddsa.new(priv, 'rfc8032')
     signed = signer.sign(usr_hash)
-    return signed.hex()
+    return signed
 
 def get_user_id():
     return 5

@@ -17,12 +17,12 @@ def create_user_key():
     with open('open.pem', 'wt') as f:
         f.write(opn.export_key(format='PEM'))
 
-def check_publ_key(signed_key, bank_path, usr_path):
+def check_publ_key(signed_key, bank_path, usr_path, id):
     with open(bank_path, 'r') as f:
         bank_key = ECC.import_key(f.read())
     with open(usr_path, 'r') as f:
         usr_key = ECC.import_key(f.read())
-    usr_hash = SHA512.new(bytes(usr_key.export_key(format='PEM'), 'utf-8'))
+    usr_hash = SHA512.new(usr_key.export_key(format='raw') + bytes(id))
     verifier = eddsa.new(bank_key, 'rfc8032')
     try:
         verifier.verify(usr_hash, signed_key)
@@ -64,12 +64,14 @@ def scan():
         choice_win.mainloop()
 
 def accept():
-    with open(data)
+    with open(data):
+        pass
 
 def new():
     data = {}
+    data["id"] = bank.get_user_id()
 
-    data["signed"] = bank.sign_user_key(f"../user/open.pem")
+    data["signed"] = bank.sign_user_key(f"../user/open.pem", bank.get_user_id())
 
     with open('data.json', 'w') as f:
         js.dump(data, f)
