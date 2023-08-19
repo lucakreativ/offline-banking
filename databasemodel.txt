@@ -1,0 +1,20 @@
+Customer:
+	CustomerID
+	(userspecific information)
+	PublicKey
+	Balance (one user has one account | one user can have multiple accounts)
+	
+
+Transaction:
+	TransactionID
+	
+	AccountTypeSender
+	AccountSender
+	
+	AccountTypeReciever
+	AccountReciever
+	
+	TransactionType (Deposit, Withdrawls, Transfer)
+	Amount
+	UnixTimeTransaction (Time of scanning the qr-codes)
+	UnixTimeRecieved (Time of sending to bank)
