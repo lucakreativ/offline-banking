@@ -4,6 +4,10 @@ from Crypto.Signature import eddsa
 from Crypto.Hash import SHA512
 from Crypto.PublicKey import RSA
 
+from Crypto.Cipher import AES, PKCS1_OAEP
+
+from pydantic import BaseModel
+
 from base64 import b64encode, b64decode
 import base64
 import time
@@ -24,9 +28,15 @@ def load_keys(username):
     return private_key, public_key
 
 
-#Load bank keys and sign RSA key
+#Load bank keys
 bank_sign_key=ECC.import_key(open("bank_private.pem", "rb").read())
 rsa_key=RSA.import_key(open("bank_rsa_private.pem").read())
+
+rsa_private_key = RSA.import_key(open("bank_rsa_private.pem").read())
+cipher_rsa = PKCS1_OAEP.new(rsa_private_key)
+
+
+#sign process
 rsa_key_export=rsa_key.export_key(format="PEM")
 
 key_hash = SHA512.new(rsa_key_export)
@@ -36,11 +46,42 @@ signed_bank_rsa = signer.sign(key_hash)
 base64_signed_bank_rsa=b64encode(signed_bank_rsa).decode('utf-8')
 
 
+class encryptedSendSymmetricKey(BaseModel):
+    encryptedKey: str
+    encryptedID: str
+    encryptedSignedHash: str
+
 
 @app.get("/get-public-key")
 def getPublicKey():
     return {"bank_key" : rsa_key_export, "signature_bank_key":base64_signed_bank_rsa}
     
+
+@app.post("/send-symmetric-key")
+def sendSymmetricKey(encryptedData: encryptedSendSymmetricKey):
+    bytesKey = b64decode(encryptedData.encryptedKey)
+    bytesID = b64decode(encryptedData.encryptedID)
+    bytesSignedHash = b64decode(encryptedData.encryptedSignedHash)
+
+    decryptedKey = cipher_rsa.decrypt(bytesKey)
+    decryptedID = cipher_rsa.decrypt(bytesID)
+    decryptedSignedHash = cipher_rsa.decrypt(bytesSignedHash)
+
+    public_key = ECC.import_key(open("client_open.pem", "rb").read())
+
+    data_hash = SHA512.new(decryptedKey+decryptedID)
+
+    verifier = eddsa.new(public_key, 'rfc8032')
+    try:
+        verifier.verify(data_hash, decryptedSignedHash)
+        
+        print("The message is authentic and signed by the right person")
+    except ValueError:
+        print("The message is not authentic or not signed by the right person")
+
+    print(decryptedKey)
+    print(decryptedID.decode("utf-8"))
+
 
 # Main application entry point
 if __name__ == "__main__":
