@@ -5,6 +5,7 @@ from Crypto.Hash import SHA512
 from Crypto.PublicKey import RSA
 
 from Crypto.Cipher import AES, PKCS1_OAEP
+from Crypto.Util.Padding import pad, unpad
 
 from pydantic import BaseModel
 
@@ -49,7 +50,9 @@ base64_signed_bank_rsa=b64encode(signed_bank_rsa).decode('utf-8')
 class encryptedSendSymmetricKey(BaseModel):
     encryptedKey: str
     encryptedID: str
+    encryptedIV: str
     encryptedSignedHash: str
+    
 
 
 @app.get("/get-public-key")
@@ -60,16 +63,21 @@ def getPublicKey():
 @app.post("/send-symmetric-key")
 def sendSymmetricKey(encryptedData: encryptedSendSymmetricKey):
     bytesKey = b64decode(encryptedData.encryptedKey)
+    bytesIV = b64decode(encryptedData.encryptedIV)
     bytesID = b64decode(encryptedData.encryptedID)
     bytesSignedHash = b64decode(encryptedData.encryptedSignedHash)
 
     decryptedKey = cipher_rsa.decrypt(bytesKey)
-    decryptedID = cipher_rsa.decrypt(bytesID)
+    decryptedIV = cipher_rsa.decrypt(bytesIV)
+    RSADecryptedID = cipher_rsa.decrypt(bytesID)
     decryptedSignedHash = cipher_rsa.decrypt(bytesSignedHash)
+
+    cipher_aes = AES.new(decryptedKey, AES.MODE_CBC, iv=decryptedIV)
+    decryptedID = unpad(cipher_aes.decrypt(RSADecryptedID), AES.block_size)
 
     public_key = ECC.import_key(open("client_open.pem", "rb").read())
 
-    data_hash = SHA512.new(decryptedKey+decryptedID)
+    data_hash = SHA512.new(decryptedKey+decryptedIV+decryptedID)
 
     verifier = eddsa.new(public_key, 'rfc8032')
     try:
@@ -79,8 +87,9 @@ def sendSymmetricKey(encryptedData: encryptedSendSymmetricKey):
     except ValueError:
         print("The message is not authentic or not signed by the right person")
 
-    print(decryptedKey)
-    print(decryptedID.decode("utf-8"))
+    #print(decryptedKey)
+    #print(decryptedIV)
+    #print(decryptedID.decode("utf-8"))
 
 
 # Main application entry point
