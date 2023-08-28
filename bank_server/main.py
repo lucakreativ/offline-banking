@@ -6,6 +6,7 @@ from Crypto.PublicKey import RSA
 
 from Crypto.Cipher import AES, PKCS1_OAEP
 from Crypto.Util.Padding import pad, unpad
+from Crypto.Random import get_random_bytes
 
 from pydantic import BaseModel
 
@@ -51,8 +52,11 @@ class encryptedSendSymmetricKey(BaseModel):
     encryptedKey: str
     encryptedID: str
     encryptedIV: str
+    unixTime: str
     encryptedSignedHash: str
     
+
+session_ID_data = {}
 
 
 @app.get("/get-public-key")
@@ -66,6 +70,7 @@ def sendSymmetricKey(encryptedData: encryptedSendSymmetricKey):
     bytesIV = b64decode(encryptedData.encryptedIV)
     bytesID = b64decode(encryptedData.encryptedID)
     bytesSignedHash = b64decode(encryptedData.encryptedSignedHash)
+    unixTimeSend = encryptedData.unixTime
 
     decryptedKey = cipher_rsa.decrypt(bytesKey)
     decryptedIV = cipher_rsa.decrypt(bytesIV)
@@ -77,19 +82,54 @@ def sendSymmetricKey(encryptedData: encryptedSendSymmetricKey):
 
     public_key = ECC.import_key(open("client_open.pem", "rb").read())
 
-    data_hash = SHA512.new(decryptedKey+decryptedIV+decryptedID)
+    data_hash = SHA512.new(decryptedKey+decryptedIV+decryptedID+unixTimeSend.encode())
 
     verifier = eddsa.new(public_key, 'rfc8032')
     try:
         verifier.verify(data_hash, decryptedSignedHash)
         
-        print("The message is authentic and signed by the right person")
-    except ValueError:
-        print("The message is not authentic or not signed by the right person")
+        current_time = int(time.time())
+        print("The data is authentic and signed by the right person")
 
-    #print(decryptedKey)
-    #print(decryptedIV)
-    #print(decryptedID.decode("utf-8"))
+        if current_time-60<encryptedData.unixTime:
+            print("Request within allowed timeframe")
+            foundID=False
+
+            while foundID==False:
+                sessionID = get_random_bytes(64)
+                if session_ID_data.get(sessionID) is None:
+                    foundID=True
+
+            session_ID_data[sessionID] = [time.time(), decryptedID, decryptedKey]
+
+            finishID = "0"
+            finishReason = "OK"
+
+        else:
+            print("The request is to old")
+
+            finishID = "2"
+            finishReason = "Request to old"
+            sessionID = ""
+
+    except ValueError:
+        print("The data is not authentic or not signed by the right person")
+
+        finishID = "1"
+        finishReason = "Signature not authentic"
+        sessionID = ""
+
+    if sessionID == "":
+        sessionID = get_random_bytes(64)
+
+    IV=get_random_bytes(16)
+    cipher_aes = AES.new(decryptedKey, AES.MODE_CBC, iv=IV)
+    encryptedSessionKey = cipher_aes.encrypt(pad(sessionID, AES.block_size))
+    b64encSessionKey = b64encode(encryptedSessionKey).decode("utf-8")
+    dataHashed = SHA512.new(finishID.encode()+finishReason.encode()+sessionID+IV)
+    signedHash = b64encode(signer.sign(dataHashed)).decode("utf-8")
+    return {"finishID":finishID, "finishReason":finishReason, "sessionID":b64encSessionKey, "signedHash":signedHash}
+    
 
 
 # Main application entry point

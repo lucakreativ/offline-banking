@@ -71,13 +71,15 @@ def sendSymmetricKey(ID):
     client_sign_key=ECC.import_key(open("client_private.pem", "rb").read())
     signer = eddsa.new(client_sign_key, 'rfc8032')
 
-    data_hash = SHA512.new(session_key+IV+bytesID)
+    unixTime = str(int(time.time()))
+
+    data_hash = SHA512.new(session_key+IV+bytesID+unixTime.encode())
 
     signed_data = signer.sign(data_hash)
     encrypted_signed_data = cipher_rsa.encrypt(signed_data)
     b64SignedData=b64encode(encrypted_signed_data).decode('utf-8')
     
-    response = requests.post(url, json={"encryptedKey" : b64EncryptedKey, "encryptedID" : b64EncryptedID, "encryptedIV": b64EncryptedIV, "encryptedSignedHash" : b64SignedData})
+    response = requests.post(url, json={"encryptedKey" : b64EncryptedKey, "encryptedID" : b64EncryptedID, "encryptedIV": b64EncryptedIV, "encryptedSignedHash" : b64SignedData, "unixTime" : unixTime})
 
 
 
