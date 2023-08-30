@@ -18,3 +18,12 @@ Transaction:
 	Amount
 	UnixTimeTransaction (Time of scanning the qr-codes)
 	UnixTimeRecieved (Time of sending to bank)
+
+
+Sessions:
+	SessionID
+	UnixTimeCreated
+	UnixTimeUsed
+	CustomerID
+	SessionKey
+	
