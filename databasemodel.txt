@@ -1,9 +1,14 @@
 Customer:
 	CustomerID
 	(userspecific information)
+
+
+Account:
+	AccountID
+	CustomerID
+	Balance
 	PublicKey
-	Balance (one user has one account | one user can have multiple accounts)
-	
+
 
 Transaction:
 	TransactionID
@@ -26,4 +31,3 @@ Sessions:
 	UnixTimeUsed
 	CustomerID
 	SessionKey
-	
