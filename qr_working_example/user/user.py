@@ -2,7 +2,7 @@ from Crypto.PublicKey import ECC
 from Crypto.Hash import SHA512
 from Crypto.Signature import eddsa
 import tkinter as tk
-import bank.bank as bank
+from qr_working_example.bank import bank as bank
 import json as js
 import qrcode
 import cv2
@@ -79,7 +79,7 @@ def accept(transaction_hash):
         border=4,
     )
 
-    path = '../user/open.pem'
+    path = 'open.pem'
     qr.add_data(f"OFFLINEBANK2||{data['id']}|{path}|{data['signed']}|{transaction_hash}")
 
     qr.make(fit=True)
@@ -92,7 +92,7 @@ def new():
     data = {}
     data["id"] = bank.get_user_id()
     data["balance"] = 0
-    data["signed"] = bank.sign_user_key(f"../user/open.pem", bank.get_user_id())
+    data["signed"] = bank.sign_user_key(f"open.pem", bank.get_user_id())
     with open('data.json', 'w') as f:
         js.dump(data, f)
 

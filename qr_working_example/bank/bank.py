@@ -16,7 +16,7 @@ def load_public_key():
         return ECC.import_key(f.read())
 
 def load_private_key():
-    with open('../bank/bank-private.pem', 'r') as f:
+    with open('bank-private.pem', 'r') as f:
         return ECC.import_key(f.read())
 
 def load_user_key(dir):
