@@ -4,8 +4,9 @@ Customer:
 
 
 Account:
-	AccountID
 	CustomerID
+	DeviceID
+	DeviceName
 	Balance
 	PublicKey
 
