@@ -28,7 +28,9 @@ Transaction:
 
 Sessions:
 	SessionID
-	UnixTimeCreated
+	State
+	Challenge
+	UnixTimeInitiated
 	UnixTimeUsed
 	CustomerID
 	SessionKey
