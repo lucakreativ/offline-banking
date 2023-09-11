@@ -28,7 +28,7 @@ Transaction:
 
 Sessions:
 	SessionID
-	State
+	StateSession
 	Challenge
 	UnixTimeInitiated
 	UnixTimeUsed
