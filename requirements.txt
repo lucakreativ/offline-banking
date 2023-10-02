@@ -1,6 +1,0 @@
-pycryptodome == 3.18.*
-opencv-python>=4.2.0.32
-qrcode == 7.4.*
-
-requests~=2.31.0
-qreader~=2.13
