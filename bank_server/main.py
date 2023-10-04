@@ -62,7 +62,7 @@ def encryptSymmetricData(data, key, IV=None):
     encryptedData = cipher_aes.encrypt(pad(data, AES.block_size))
     b64encData = b64encode(encryptedData).decode("utf-8")
     b64encIV = b64encode(IV).decode("utf-8")
-    return (b64encData, b64encIV)
+    return (b64encData, b64encIV, IV)
     
 
 session_ID_data = {}
@@ -131,13 +131,10 @@ def sendSymmetricKey(encryptedData: encryptedSendSymmetricKey):
     if sessionID == "":
         sessionID = get_random_bytes(64)
 
-    IV=get_random_bytes(16)
-    cipher_aes = AES.new(decryptedKey, AES.MODE_CBC, iv=IV)
-    encryptedSessionKey = cipher_aes.encrypt(pad(sessionID, AES.block_size))
-    b64encSessionKey = b64encode(encryptedSessionKey).decode("utf-8")
+    b64encSessionKey, b64encIV, IV = encryptSymmetricData(sessionID, decryptedKey)
     dataHashed = SHA512.new(finishID.encode()+finishReason.encode()+sessionID+IV)
     signedHash = b64encode(signer.sign(dataHashed)).decode("utf-8")
-    return {"finishID":finishID, "finishReason":finishReason, "sessionID":b64encSessionKey, "signedHash":signedHash}
+    return {"finishID":finishID, "finishReason":finishReason, "sessionID":b64encSessionKey, "signedHash":signedHash, "IV":b64encIV}
     
 
 
