@@ -54,6 +54,15 @@ class encryptedSendSymmetricKey(BaseModel):
     encryptedIV: str
     unixTime: str
     encryptedSignedHash: str
+
+def encryptSymmetricData(data, key, IV=None):
+    if IV==None:
+        IV=get_random_bytes(16)
+    cipher_aes = AES.new(key, AES.MODE_CBC, iv=IV)
+    encryptedData = cipher_aes.encrypt(pad(data, AES.block_size))
+    b64encData = b64encode(encryptedData).decode("utf-8")
+    b64encIV = b64encode(IV).decode("utf-8")
+    return (b64encData, b64encIV)
     
 
 session_ID_data = {}
