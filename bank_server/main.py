@@ -31,15 +31,14 @@ def load_keys(username):
 
 
 #Load bank keys
-bank_sign_key=ECC.import_key(open("bank_private.pem", "rb").read())
-rsa_key=RSA.import_key(open("bank_rsa_private.pem").read())
+bank_sign_key=ECC.import_key(open("bank-private.pem", "rb").read())
 
 rsa_private_key = RSA.import_key(open("bank_rsa_private.pem").read())
 cipher_rsa = PKCS1_OAEP.new(rsa_private_key)
 
 
 #sign process
-rsa_key_export=rsa_key.export_key(format="PEM")
+rsa_key_export=rsa_private_key.export_key(format="PEM")
 
 key_hash = SHA512.new(rsa_key_export)
 
@@ -70,6 +69,16 @@ def signData(data):
     signedHashB64 = b64encode(signedHashed).decode("utf-8")
     return signedHashB64
 
+def b64PackageDecoder(dataBlock):
+    dataDictionary = {}
+    for i in dataBlock:
+        try:
+            dataDictionary[i[0]] = base64.b64decode(i[1])
+        except:
+            dataDictionary[i[0]] = i[1]
+
+    return dataDictionary
+
 session_ID_data = {}
 
 
@@ -80,21 +89,20 @@ def getPublicKey():
 
 @app.post("/send-symmetric-key")
 def sendSymmetricKey(encryptedData: encryptedSendSymmetricKey):
-    bytesKey = b64decode(encryptedData.encryptedKey)
-    bytesIV = b64decode(encryptedData.encryptedIV)
-    bytesID = b64decode(encryptedData.encryptedID)
-    bytesSignedHash = b64decode(encryptedData.encryptedSignedHash)
+    data = b64PackageDecoder(encryptedData)
+    print(data)
+
     unixTimeSend = encryptedData.unixTime
 
-    decryptedKey = cipher_rsa.decrypt(bytesKey)
-    decryptedIV = cipher_rsa.decrypt(bytesIV)
-    RSADecryptedID = cipher_rsa.decrypt(bytesID)
-    decryptedSignedHash = cipher_rsa.decrypt(bytesSignedHash)
+    decryptedKey = cipher_rsa.decrypt(data["encryptedKey"])
+    decryptedIV = cipher_rsa.decrypt(data["encryptedIV"])
+    RSADecryptedID = cipher_rsa.decrypt(data["encryptedID"])
+    decryptedSignedHash = cipher_rsa.decrypt(data["encryptedSignedHash"])
 
     cipher_aes = AES.new(decryptedKey, AES.MODE_CBC, iv=decryptedIV)
     decryptedID = unpad(cipher_aes.decrypt(RSADecryptedID), AES.block_size)
 
-    public_key = ECC.import_key(open("client_open.pem", "rb").read())
+    public_key = ECC.import_key(open("open.pem", "rb").read())
 
     data_hash = SHA512.new(decryptedKey+decryptedIV+decryptedID+unixTimeSend.encode())
 
@@ -105,7 +113,7 @@ def sendSymmetricKey(encryptedData: encryptedSendSymmetricKey):
         current_time = int(time.time())
         print("The data is authentic and signed by the right person")
 
-        if current_time-60<encryptedData.unixTime:
+        if current_time-60<int(encryptedData.unixTime):
             print("Request within allowed timeframe")
             foundID=False
 
