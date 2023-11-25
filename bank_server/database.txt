@@ -1,0 +1,8 @@
+sqlite3 database.sqlite3
+
+
+CREATE TABLE IF NOT EXISTS usersChallenges (
+    row_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    unix_time INTEGER,
+    random_data BLOB
+);
