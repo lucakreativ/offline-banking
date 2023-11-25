@@ -12,6 +12,8 @@ from pydantic import BaseModel
 
 from base64 import b64encode, b64decode
 import base64
+import sqlite3
+import os
 import time
 
 app = FastAPI()
@@ -47,12 +49,6 @@ signed_bank_rsa = signer.sign(key_hash)
 base64_signed_bank_rsa=b64encode(signed_bank_rsa).decode('utf-8')
 
 
-class encryptedSendSymmetricKey(BaseModel):
-    encryptedKey: str
-    encryptedID: str
-    encryptedIV: str
-    unixTime: str
-    encryptedSignedHash: str
 
 def encryptSymmetricData(data, key, IV=None):
     if IV==None:
@@ -87,68 +83,29 @@ def getPublicKey():
     return {"bank_key" : rsa_key_export, "signature_bank_key":base64_signed_bank_rsa}
     
 
-@app.post("/send-symmetric-key")
-def sendSymmetricKey(encryptedData: encryptedSendSymmetricKey):
-    data = b64PackageDecoder(encryptedData)
-    print(data)
+@app.get("/get-challenge")
+def get_random_data():
+    length=64
+    random_bytes = os.urandom(length)
 
-    unixTimeSend = encryptedData.unixTime
+    connection = sqlite3.connect('database.sqlite3')
+    cursor = connection.cursor()
+    cursor.execute('''
+        INSERT INTO usersChallenges (unix_time, random_data)
+        VALUES (?, ?)
+    ''', (int(time.time()), random_bytes))
 
-    decryptedKey = cipher_rsa.decrypt(data["encryptedKey"])
-    decryptedIV = cipher_rsa.decrypt(data["encryptedIV"])
-    RSADecryptedID = cipher_rsa.decrypt(data["encryptedID"])
-    decryptedSignedHash = cipher_rsa.decrypt(data["encryptedSignedHash"])
+    row_id = cursor.lastrowid
 
-    cipher_aes = AES.new(decryptedKey, AES.MODE_CBC, iv=decryptedIV)
-    decryptedID = unpad(cipher_aes.decrypt(RSADecryptedID), AES.block_size)
 
-    public_key = ECC.import_key(open("open.pem", "rb").read())
+    connection.commit()
+    connection.close()
 
-    data_hash = SHA512.new(decryptedKey+decryptedIV+decryptedID+unixTimeSend.encode())
+    length=64
+    random_bytes = os.urandom(length)
+    b64_encoded = base64.b64encode(random_bytes).decode('utf-8')
+    return {"random_data": b64_encoded, "id": row_id}
 
-    verifier = eddsa.new(public_key, 'rfc8032')
-    try:
-        verifier.verify(data_hash, decryptedSignedHash)
-        
-        current_time = int(time.time())
-        print("The data is authentic and signed by the right person")
-
-        if current_time-60<int(encryptedData.unixTime):
-            print("Request within allowed timeframe")
-            foundID=False
-
-            while foundID==False:
-                sessionID = get_random_bytes(64)
-                if session_ID_data.get(sessionID) is None:
-                    foundID=True
-
-            session_ID_data[sessionID] = [time.time(), decryptedID, decryptedKey]
-
-            finishID = "0"
-            finishReason = "OK"
-
-        else:
-            print("The request is to old")
-
-            finishID = "2"
-            finishReason = "Request to old"
-            sessionID = ""
-
-    except ValueError:
-        print("The data is not authentic or not signed by the right person")
-
-        finishID = "1"
-        finishReason = "Signature not authentic"
-        sessionID = ""
-
-    if sessionID == "":
-        sessionID = get_random_bytes(64)
-
-    b64encSessionKey, b64encIV, IV = encryptSymmetricData(sessionID, decryptedKey)
-    signedHash = signData(finishID.encode()+finishReason.encode()+sessionID+IV)
-    
-    return {"finishID":finishID, "finishReason":finishReason, "sessionID":b64encSessionKey, "signedHash":signedHash, "IV":b64encIV}
-    
 
 
 # Main application entry point
