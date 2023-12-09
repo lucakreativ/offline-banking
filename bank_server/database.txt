@@ -2,9 +2,9 @@ sqlite3 database.sqlite3
 
 
 CREATE TABLE IF NOT EXISTS usersChallenges (
-    row_id INTEGER PRIMARY KEY AUTOINCREMENT,
-    unix_time INTEGER,
-    random_data BLOB
+    rowID INTEGER PRIMARY KEY AUTOINCREMENT,
+    unixTime INTEGER,
+    randomData BLOB
 );
 
 
@@ -13,7 +13,7 @@ CREATE TABLE IF NOT EXISTS account (
     deviceID INTEGER PRIMARY KEY,
     deviceName TEXT,
     balance REAL,
-    PublicKey TEXT,
+    publicKey TEXT,
     FOREIGN KEY (customerID)
        REFERENCES customer (customerID)
 );
