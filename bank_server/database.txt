@@ -6,3 +6,25 @@ CREATE TABLE IF NOT EXISTS usersChallenges (
     unix_time INTEGER,
     random_data BLOB
 );
+
+
+CREATE TABLE IF NOT EXISTS account (
+    customerID INTEGER,
+    deviceID INTEGER PRIMARY KEY,
+    deviceName TEXT,
+    balance REAL,
+    PublicKey TEXT,
+    FOREIGN KEY (customerID)
+       REFERENCES customer (customerID)
+);
+
+
+CREATE TABLE IF NOT EXISTS customer (
+    customerID INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT,
+    birthYear INTEGER,
+    birthMonth INTEGER,
+    birthDate INTEGER,
+    adress TEXT, 
+    hashPassword BLOB
+);
