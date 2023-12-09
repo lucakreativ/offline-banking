@@ -20,7 +20,7 @@ CREATE TABLE IF NOT EXISTS account (
 
 
 CREATE TABLE IF NOT EXISTS customer (
-    customerID INTEGER PRIMARY KEY AUTOINCREMENT,
+    customerID TEXT PRIMARY KEY,
     name TEXT,
     birthYear INTEGER,
     birthMonth INTEGER,
