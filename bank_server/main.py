@@ -108,6 +108,50 @@ def get_random_data():
 
 
 
+@app.post("/get-challenge-response")
+def get_challenge_response(data: dict):
+    connection = sqlite3.connect('database.sqlite3')
+    cursor = connection.cursor()
+    cursor.execute('''
+        SELECT publicKey, publicKeyRSA FROM account WHERE customerID=? AND deviceID=?
+    ''', (data["customerID"], data["deviceID"]))
+
+    public_key, public_keyRSA = cursor.fetchone()
+
+
+    connection.commit()
+
+
+    cursor.execute('''
+        SELECT random_data FROM usersChallenges WHERE id=?
+    ''', (data["id"],))
+
+    randomData = cursor.fetchone()[0]
+    connection.commit()
+    connection.close()
+
+    # verify signature
+    public_key = ECC.import_key(public_key)
+    verifier = eddsa.new(public_key, 'rfc8032')
+    
+    data_hash = SHA512.new(randomData)
+    try:
+        verifier.verify(data_hash, b64decode(data["signature"]))
+    except ValueError:
+        raise HTTPException(status_code=401, detail="Invalid signature")
+    
+
+    random_key = get_random_bytes(16)
+    
+    rsa_public_key = RSA.import_key(public_keyRSA)
+    cipher_rsa = PKCS1_OAEP.new(rsa_public_key)
+    encrypted_random_key = cipher_rsa.encrypt(random_key)
+    encrypted_random_key_b64 = b64encode(encrypted_random_key).decode("utf-8")
+    signed_random_key = signData(encrypted_random_key)
+    return {"random_key": encrypted_random_key_b64, "signed_random_key": signed_random_key}
+    
+
+
 # Main application entry point
 if __name__ == "__main__":
     import uvicorn
