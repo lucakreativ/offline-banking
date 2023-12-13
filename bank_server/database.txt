@@ -14,6 +14,7 @@ CREATE TABLE IF NOT EXISTS account (
     deviceName TEXT,
     balance REAL,
     publicKey TEXT,
+    publicKeyRSA TEXT,
     FOREIGN KEY (customerID)
        REFERENCES customer (customerID)
 );
