@@ -9,8 +9,8 @@ CREATE TABLE IF NOT EXISTS usersChallenges (
 
 
 CREATE TABLE IF NOT EXISTS account (
-    customerID INTEGER,
-    deviceID INTEGER PRIMARY KEY,
+    customerID TEXT,
+    deviceID TEXT PRIMARY KEY,
     deviceName TEXT,
     balance REAL,
     publicKey TEXT,
@@ -28,4 +28,17 @@ CREATE TABLE IF NOT EXISTS customer (
     birthDate INTEGER,
     adress TEXT, 
     hashPassword BLOB
+);
+
+
+CREATE TABLE IF NOT EXISTS sessions (
+    sessionID INTEGER PRIMARY KEY,
+    customerID TEXT,
+    deviceID TEXT,
+    password BLOB,
+    creationTime INTEGER,
+    FOREIGN KEY (customerID)
+       REFERENCES customer (customerID),
+    FOREIGN KEY (deviceID)
+       REFERENCES account (deviceID)
 );

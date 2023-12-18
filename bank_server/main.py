@@ -7,6 +7,7 @@ from Crypto.PublicKey import RSA
 from Crypto.Cipher import AES, PKCS1_OAEP
 from Crypto.Util.Padding import pad, unpad
 from Crypto.Random import get_random_bytes
+from Crypto.Random.random import randint
 
 from pydantic import BaseModel
 
@@ -14,6 +15,7 @@ from base64 import b64encode, b64decode
 import base64
 import sqlite3
 import os
+import json
 import time
 
 app = FastAPI()
@@ -128,7 +130,6 @@ def get_challenge_response(data: dict):
 
     randomData = cursor.fetchone()[0]
     connection.commit()
-    connection.close()
 
     # verify signature
     public_key = ECC.import_key(public_key)
@@ -140,8 +141,27 @@ def get_challenge_response(data: dict):
     except ValueError:
         raise HTTPException(status_code=401, detail="Invalid signature")
     
+    cursor.execute('''
+        DELETE FROM usersChallenges WHERE id=?
+    ''', (data["id"],))
+    connection.commit()
 
+    con = True
+    while con:
+        sessionID = randint(0, 2**32-1)
+        cursor.execute('''SELECT * FROM sessions WHERE sessionID=?''', (sessionID,))
+        if cursor.fetchone() == None:
+            con = False
+            
     random_key = get_random_bytes(16)
+
+    cursor.execute('''
+        INSERT INTO sessions (sessionID, customerID, deviceID, password, creationTime)
+        VALUES (?, ?, ?, ?, ?)
+        ''', (sessionID, data["customerID"], data["deviceID"], random_key, int(time.time())))
+    connection.commit()
+    connection.close()
+
     
     rsa_public_key = RSA.import_key(public_keyRSA)
     cipher_rsa = PKCS1_OAEP.new(rsa_public_key)
@@ -150,6 +170,64 @@ def get_challenge_response(data: dict):
     signed_random_key = signData(encrypted_random_key)
     return {"random_key": encrypted_random_key_b64, "signed_random_key": signed_random_key}
     
+
+@app.post("/get-balance")
+def get_balance(data: dict):
+    if data["sessionID"] not in session_ID_data:
+        raise HTTPException(status_code=401, detail="Invalid sessionID")
+    
+    connection = sqlite3.connect('database.sqlite3')
+    cursor = connection.cursor()
+    cursor.execute('''
+        SELECT * FROM sessions WHERE sessionID=?''', (data["sessionID"],))
+    sessionData = cursor.fetchone()
+    connection.commit()
+
+    cursor.execute('''
+        SELECT publicKey FROM account WHERE customerID=? AND deviceID=?''', (sessionData[1], sessionData[2]))
+    public_key = cursor.fetchone()[0]
+    connection.commit()
+    connection.close()
+
+
+    public_key = ECC.import_key(public_key)
+    verifier = eddsa.new(public_key, 'rfc8032')
+    
+    data_hash = SHA512.new(b64decode(data["json"]))
+    try:
+        verifier.verify(data_hash, b64decode(data["signature"]))
+    except ValueError:
+        raise HTTPException(status_code=401, detail="Invalid signature")
+    
+    
+
+    try:
+        cipher = AES.new(sessionData[3], AES.MODE_CBC, IV=data["IV"])
+        jsonData = cipher.decrypt(b64decode(data["json"]))
+        jsonData = unpad(jsonData, AES.block_size)
+    except:
+        raise HTTPException(status_code=401, detail="Invalid IV or SessionID")
+    
+    jsonData = json.loads(jsonData)
+    if jsonData["time"] < int(time.time()) - 60:
+        raise HTTPException(status_code=401, detail="Message too old")
+    else:
+        connection = sqlite3.connect('database.sqlite3')
+        cursor = connection.cursor()
+        cursor.execute('''
+            SELECT balance FROM account WHERE customerID=? AND deviceID=?''', (sessionData[1], sessionData[2]))
+        balance = cursor.fetchone()[0]
+        connection.commit()
+        connection.close()
+
+        encryptedBalance = cipher.encrypt(balance.encode("utf-8"))
+        encryptedBalanceB64 = b64encode(encryptedBalance).decode("utf-8")
+
+        signedData = signData(encryptedBalance)
+        return {"encrypted_balance": encryptedBalanceB64, "signed_balance": signedData}
+
+
+
 
 
 # Main application entry point
