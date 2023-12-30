@@ -77,8 +77,6 @@ def b64PackageDecoder(dataBlock):
 
     return dataDictionary
 
-session_ID_data = {}
-
 
 @app.get("/get-public-key")
 def getPublicKey():
@@ -173,15 +171,16 @@ def get_challenge_response(data: dict):
 
 @app.post("/get-balance")
 def get_balance(data: dict):
-    if data["sessionID"] not in session_ID_data:
-        raise HTTPException(status_code=401, detail="Invalid sessionID")
-    
     connection = sqlite3.connect('database.sqlite3')
     cursor = connection.cursor()
+
     cursor.execute('''
         SELECT * FROM sessions WHERE sessionID=?''', (data["sessionID"],))
     sessionData = cursor.fetchone()
     connection.commit()
+
+    if sessionData == None:
+        raise HTTPException(status_code=401, detail="Invalid sessionID")
 
     cursor.execute('''
         SELECT publicKey FROM account WHERE customerID=? AND deviceID=?''', (sessionData[1], sessionData[2]))
@@ -227,8 +226,70 @@ def get_balance(data: dict):
         return {"encrypted_balance": encryptedBalanceB64, "signed_balance": signedData}
 
 
+@app.post("/transfer")
+def transfer(data: dict):
+    connection = sqlite3.connect('database.sqlite3')
+    cursor = connection.cursor()
+
+    cursor.execute('''
+        SELECT * FROM sessions WHERE sessionID=?''', (data["sessionID"],))
+    sessionData = cursor.fetchone()
+    connection.commit()
+
+    if sessionData == None:
+        raise HTTPException(status_code=401, detail="Invalid sessionID")
+
+    cursor.execute('''
+        SELECT publicKey FROM account WHERE customerID=? AND deviceID=?''', (sessionData[1], sessionData[2]))
+    public_key = cursor.fetchone()[0]
+    connection.commit()
+    connection.close()
 
 
+    public_key = ECC.import_key(public_key)
+    verifier = eddsa.new(public_key, 'rfc8032')
+    
+    data_hash = SHA512.new(b64decode(data["json"]))
+    try:
+        verifier.verify(data_hash, b64decode(data["signature"]))
+    except ValueError:
+        raise HTTPException(status_code=401, detail="Invalid signature")
+    
+    
+
+    try:
+        cipher = AES.new(sessionData[3], AES.MODE_CBC, IV=data["IV"])
+        jsonData = cipher.decrypt(b64decode(data["json"]))
+        jsonData = unpad(jsonData, AES.block_size)
+    except:
+        raise HTTPException(status_code=401, detail="Invalid IV or SessionID")
+    
+    jsonData = json.loads(jsonData)
+    if jsonData["time"] < int(time.time()) - 60:
+        raise HTTPException(status_code=401, detail="Message too old")
+    else:
+        for userTransfer in jsonData["transfers"]:
+            #check signature
+            cursor.execute('''
+                INSERT INTO transfers (accountTypeSender, accountSender, accountTypeReceiver, accountReceiver, transactionType, amount, unixTimeTransaction, unixTimeRecieved)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                ''', (userTransfer["accountTypeSender"], userTransfer["accountSender"], userTransfer["accountTypeReceiver"], userTransfer["accountReceiver"], userTransfer["transactionType"], userTransfer["amount"], userTransfer["unixTimeTransaction"], int(time.time())))
+            connection.commit()
+
+            cursor.execute('''
+                SET balance = balance - ? WHERE deviceID = ? )
+                ''', (userTransfer["amount"], userTransfer["accountSender"]))
+            connection.commit()
+            cursor.execute('''
+                SET balance = balance + ? WHERE deviceID = ? )
+                ''', (userTransfer["amount"], userTransfer["accountReceiver"]))
+            connection.commit()
+
+            
+        connection.close() 
+        return {"status": "success"}
+           
+        
 
 # Main application entry point
 if __name__ == "__main__":
